@@ -790,61 +790,57 @@
       if (src == 4) {
         //ALU with imm
         tx(16);
+        var cy = cpu.f & CARRY ? CARRY : 0;
         val = nextByte();
-        if (dst === 0) {
+        if (dest === 0) {
           //add
           val = cpu.a + val;
           storeA(val);
-          return;
         }
-        if (dst === 1) {
+        if (dest === 1) {
           //adi
           val = cpu.a + val;
           if (cpu.f & CARRY) val++;
           storeA(val);
-          return;
         }
-        if (dst === 2) {
+        if (dest === 2) {
           //sux
           val = cpu.a - val;
           storeA(val);
-          return;
         }
-        if (dst === 3) {
+        if (dest === 3) {
           //sbx
           val = cpu.a - val;
           if (cpu.f & CARRY) val--;
           storeA(val);
-          return;
         }
 
-        if (dst === 4) {
+        if (dest === 4) {
           //and
           val = cpu.a & val;
           storeA(val);
-          return;
         }
-        if (dst === 5) {
+        if (dest === 5) {
           //xor
           val = cpu.a ^ val;
           storeA(val);
-          return;
         }
-        if (dst === 6) {
+        if (dest === 6) {
           //xor
           val = cpu.a | val;
           storeA(val);
-          return;
         }
-        if (dst === 7) {
+        if (dest === 7) {
           //cp
 
           var olda = cpu.a;
           val = cpu.a - val;
           storeA(val);
           cpu.a = olda;
-          return;
         }
+        if (cy) cpu.f |= CARRY;
+        else cpu.f &= ~CARRY;
+        return;
       }
       if (src == 5) {
         //RST cond
@@ -888,6 +884,289 @@
   var goTrace = function (proc) {
     console.log(toHex4(proc.pc));
   };
+
+  // ============ DISASSEMBLER
+  var dx = [
+    ["*HLT", 1],
+    ["*HLT", 1],
+    ["RLC", 1],
+    ["RFC", 1],
+    ["ADI d8", 2],
+    ["RST 0", 1],
+    ["LAI d8", 2],
+    ["RET", 1],
+    ["INB", 1],
+    ["DCB", 1],
+    ["RRC", 1],
+    ["RFZ", 1],
+    ["ACI d8", 2],
+    ["RST 1", 1],
+    ["LBI d8", 2],
+    ["*RET", 1],
+    ["INC", 1],
+    ["DCC", 1],
+    ["RAL", 1],
+    ["RFS", 1],
+    ["SUI d8", 2],
+    ["RST 2", 1],
+    ["LCI d8", 2],
+    ["*RET", 1],
+    ["IND", 1],
+    ["DCD", 1],
+    ["RAR", 1],
+    ["RFP", 1],
+    ["SBI d8", 2],
+    ["RST 3", 1],
+    ["LDI d8", 2],
+    ["*RET", 1],
+    ["INE", 1],
+    ["DCE", 1],
+    ["*NOP", 1],
+    ["RTC", 1],
+    ["NDI d8", 2],
+    ["RST 4", 1],
+    ["LEI d8", 2],
+    ["*RET", 1],
+    ["INH", 1],
+    ["DCH", 1],
+    ["*NOP", 1],
+    ["RTZ", 1],
+    ["XRI d8", 2],
+    ["RST 5", 1],
+    ["LHI d8", 2],
+    ["*RET", 1],
+    ["INL", 1],
+    ["DCL", 1],
+    ["*NOP", 1],
+    ["RTS", 1],
+    ["ORI d8", 2],
+    ["RST 6", 1],
+    ["LLI d8", 2],
+    ["*RET", 1],
+    ["*NOP", 1],
+    ["*NOP", 1],
+    ["*NOP", 1],
+    ["RTP", 1],
+    ["CPI d8", 2],
+    ["RST 7", 1],
+    ["LMI d8", 2],
+    ["*RET", 1],
+    ["JFC a16", 3],
+    ["INP 0", 1],
+    ["CFC a16", 3],
+    ["INP 1", 1],
+    ["JMP a16", 3],
+    ["INP 2", 1],
+    ["CAL a16", 3],
+    ["INP 3", 1],
+    ["JFZ a16", 3],
+    ["INP 4", 1],
+    ["CFZ a16", 3],
+    ["INP 5", 1],
+    ["*JMP a16", 3],
+    ["INP 6", 1],
+    ["*CAL a16", 3],
+    ["INP 7", 1],
+    ["JFS a16", 3],
+    ["OUT 8", 1],
+    ["CFS a16", 3],
+    ["OUT 9", 1],
+    ["*JMP a16", 3],
+    ["OUT 10", 1],
+    ["*CAL a16", 3],
+    ["OUT 11", 1],
+    ["JFP a16", 3],
+    ["OUT 12", 1],
+    ["CFP a16", 3],
+    ["OUT 13", 1],
+    ["*JMP a16", 3],
+    ["OUT 14", 1],
+    ["*CAL a16", 3],
+    ["OUT 15", 1],
+    ["JTC a16", 3],
+    ["OUT 16", 1],
+    ["CTC a16", 3],
+    ["OUT 17", 1],
+    ["*JMP a16", 3],
+    ["OUT 18", 1],
+    ["*CAL a16", 3],
+    ["OUT 19", 1],
+    ["JTZ a16", 3],
+    ["OUT 20", 1],
+    ["CTZ a16", 3],
+    ["OUT 21", 1],
+    ["*JMP a16", 3],
+    ["OUT 22", 1],
+    ["*CAL a16", 3],
+    ["OUT 23", 1],
+    ["JTS a16", 3],
+    ["OUT 24", 1],
+    ["CTS a16", 3],
+    ["OUT 25", 1],
+    ["*JMP a16", 3],
+    ["OUT 26", 1],
+    ["*CAL a16", 3],
+    ["OUT 27", 1],
+    ["JTP a16", 3],
+    ["OUT 28", 1],
+    ["CTP a16", 3],
+    ["OUT 29", 1],
+    ["*JMP a16", 3],
+    ["OUT 30", 1],
+    ["*CAL a16", 3],
+    ["OUT 31", 1],
+    ["ADA", 1],
+    ["ADB", 1],
+    ["ADC", 1],
+    ["ADD", 1],
+    ["ADE", 1],
+    ["ADH", 1],
+    ["ADL", 1],
+    ["ADM", 1],
+    ["ACA", 1],
+    ["ACB", 1],
+    ["ACC", 1],
+    ["ACD", 1],
+    ["ACE", 1],
+    ["ACH", 1],
+    ["ACL", 1],
+    ["ACM", 1],
+    ["SUA", 1],
+    ["SUB", 1],
+    ["SUC", 1],
+    ["SUD", 1],
+    ["SUE", 1],
+    ["SUH", 1],
+    ["SUL", 1],
+    ["SUM", 1],
+    ["SBA", 1],
+    ["SBB", 1],
+    ["SBC", 1],
+    ["SBD", 1],
+    ["SBE", 1],
+    ["SBH", 1],
+    ["SBL", 1],
+    ["SBM", 1],
+    ["NDA", 1],
+    ["NDB", 1],
+    ["NDC", 1],
+    ["NDD", 1],
+    ["NDE", 1],
+    ["NDH", 1],
+    ["NDL", 1],
+    ["NDM", 1],
+    ["XRA", 1],
+    ["XRB", 1],
+    ["XRC", 1],
+    ["XRD", 1],
+    ["XRE", 1],
+    ["XRH", 1],
+    ["XRL", 1],
+    ["XRM", 1],
+    ["ORA", 1],
+    ["ORB", 1],
+    ["ORC", 1],
+    ["ORD", 1],
+    ["ORE", 1],
+    ["ORH", 1],
+    ["ORL", 1],
+    ["ORM", 1],
+    ["CPA", 1],
+    ["CPB", 1],
+    ["CPC", 1],
+    ["CPD", 1],
+    ["CPE", 1],
+    ["CPH", 1],
+    ["CPL", 1],
+    ["CPM", 1],
+    ["NOP", 1],
+    ["LAB", 1],
+    ["LAC", 1],
+    ["LAD", 1],
+    ["LAE", 1],
+    ["LAH", 1],
+    ["LAL", 1],
+    ["LAM", 1],
+    ["LBA", 1],
+    ["LBB", 1],
+    ["LBC", 1],
+    ["LBD", 1],
+    ["LBE", 1],
+    ["LBH", 1],
+    ["LBL", 1],
+    ["LBM", 1],
+    ["LCA", 1],
+    ["LCB", 1],
+    ["LCC", 1],
+    ["LCD", 1],
+    ["LCE", 1],
+    ["LCH", 1],
+    ["LCL", 1],
+    ["LCM", 1],
+    ["LDA", 1],
+    ["LDB", 1],
+    ["LDC", 1],
+    ["LDD", 1],
+    ["LDE", 1],
+    ["LDH", 1],
+    ["LDL", 1],
+    ["LDM", 1],
+    ["LEA", 1],
+    ["LEB", 1],
+    ["LEC", 1],
+    ["LED", 1],
+    ["LEE", 1],
+    ["LEH", 1],
+    ["LEL", 1],
+    ["LEM", 1],
+    ["LHA", 1],
+    ["LHB", 1],
+    ["LHC", 1],
+    ["LHD", 1],
+    ["LHE", 1],
+    ["LHH", 1],
+    ["LHL", 1],
+    ["LHM", 1],
+    ["LLA", 1],
+    ["LLB", 1],
+    ["LLC", 1],
+    ["LLD", 1],
+    ["LLE", 1],
+    ["LLH", 1],
+    ["LLL", 1],
+    ["LLM", 1],
+    ["LMA", 1],
+    ["LMB", 1],
+    ["LMC", 1],
+    ["LMD", 1],
+    ["LME", 1],
+    ["LMH", 1],
+    ["LML", 1],
+    ["HLT", 1],
+  ];
+  var disasm = function (a, b, c) {
+    var pad4 = function (q) {
+      while (q.length < 4) {
+        q = "0" + q;
+      }
+      return q;
+    };
+    var pad2 = function (q) {
+      while (q.length < 2) {
+        q = "0" + q;
+      }
+      return q;
+    };
+    var out = dx[a];
+    if (out[1] == 2) {
+      out[0] = out[0].replace("d8", "" + pad2(b.toString(16)));
+    }
+    if (out[1] == 3) {
+      out[0] = out[0].replace("a16", "" + pad4((b + 256 * c).toString(16)));
+    }
+    return out;
+  };
+  // ============ MAIN
 
   return {
     trace: function (stat) {
@@ -967,8 +1246,8 @@
     flagsToString: function () {
       var f = "",
         fx = "SZPC";
-      for (var i = 0; i < 8; i++) {
-        var n = proc.f & (0x80 >> i);
+      for (var i = 0; i < 4; i++) {
+        var n = cpu.f & (0x8 >> i);
         if (n === 0) {
           f += fx[i].toLowerCase();
         } else {
@@ -977,7 +1256,6 @@
       }
       return f;
     },
+    disasm: disasm,
   };
 });
-
-console.log(this.CPU8008);
