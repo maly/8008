@@ -676,17 +676,21 @@
     //branches / inputs
     else if (qq == 1) {
       if ((src & 1) === 1) {
-        var port = (i > 1) & 0x1f;
+        var port = ((i - 64) >> 1) & 0x1f;
+        //console.log("PORT", port, cpu.a);
         if (port < 8) {
           cpu.a = readPort(port) & 0xff;
+          tx(16);
         } else {
           writePort(port, cpu.a);
+          tx(12);
         }
         return;
       }
       var adx = nextWord() & 0x3fff;
-      var cond = condCheck(dest & 3);
+      var cond = condCheck(dest);
       //branches / inputs
+      //console.log("JXX", src, dest, cond);
       if (src === 4) cond = 1;
       if (src === 6) cond = 1;
       if ((src & 0x3) === 0) {
@@ -776,7 +780,7 @@
 
       if (src == 3) {
         //RET cond
-        var cond = condCheck(dest & 3);
+        var cond = condCheck(dest);
         if (cond) {
           tx(10);
           if (cpu.sp.length < 1) return;

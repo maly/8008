@@ -187,3 +187,15 @@ test("Simple op JTC", function () {
   equal(s.f, 0, "Flags");
   equal(CPU8008.T(), 18, "Timer");
 });
+
+test("Simple op OUT", function () {
+  RAM = [0x51, 0x12, 0xf4, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  CPU8008.init(byteTo, byteAt, null, byteTo, byteAt);
+  CPU8008.set("pc", 0);
+  CPU8008.set("a", 0x55);
+  CPU8008.steps(1);
+  var s = CPU8008.status();
+  equal(s.pc, 0x1, "PC");
+  equal(RAM[0], 0x55, "Flags");
+  equal(CPU8008.T(), 12, "Timer");
+});
